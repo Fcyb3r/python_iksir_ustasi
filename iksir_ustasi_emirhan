@@ -1,0 +1,143 @@
+# pgzrun ile çalıştır: pgzrun bana_mu_iksir_ustasi.py
+
+import random
+import time
+
+WIDTH = 800
+HEIGHT = 600
+
+# Malzeme listesi ve ikonlari
+malzemeler = ["Kurbaga gozu", "Ejderha kani", "Solucan yagi", "Gizemli toz", "Mantar", "Tekboynuz saci"]
+malzeme_ikonlari = {
+    "Kurbaga gozu": "frog_eye",
+    "Ejderha kani": "dragon_blood",
+    "Solucan yagi": "worm_oil",
+    "Gizemli toz": "mystic_dust",
+    "Mantar": "mushroom",
+    "Tekboynuz saci": "unicorn_hair"
+}
+
+iksirler = {
+    "Sans iksiri": ["Kurbaga gozu", "Gizemli toz"],
+    "Gorunmezlik": ["Tekboynuz saci", "Ejderha kani"],
+    "Uyku iksiri": ["Mantar", "Solucan yagi"],
+    "Zihin acici": ["Ejderha kani", "Gizemli toz"]
+}
+
+# Başlangıç değerleri
+mevcut_iksir = ""
+secili_malzemeler = []
+skor = 0
+can = 3
+mesaj = ""
+son_buyu_zamani = time.time()
+oyun_basladi = False  # <<< yeni değişken
+
+# Sesler
+dogru_ses = sounds.correct
+yanlis_ses = sounds.wrong
+karistir_ses = sounds.mix
+
+# Arka plan
+arka_plan = Actor("hogwarts_lab")
+arka_plan.pos = (WIDTH // 2, HEIGHT // 2)
+
+def draw():
+    screen.clear()
+    screen.blit("hogwarts_lab", (0, 0))
+
+    if not oyun_basladi:
+        screen.draw.text("IKSIR USTASI", center=(WIDTH//2, HEIGHT//2 - 60), fontsize=70, color="lightblue")
+        if can <= 0:
+            screen.draw.text(f"Oyun Bitti! Skor: {skor}", center=(WIDTH//2, HEIGHT//2), fontsize=45, color="red")
+        else:
+            screen.draw.text("Baslamak icin SPACE tusuna basin", center=(WIDTH//2, HEIGHT//2 + 40), fontsize=35, color="white")
+        return  # çizimi burada bitir
+
+    # Oyun başladıysa:
+    screen.draw.text(f"Iksir: {mevcut_iksir}", (50, 30), fontsize=40, color="white")
+
+    for i, malzeme in enumerate(malzemeler):
+        y = 130 + i * 50
+        ikon = Actor(malzeme_ikonlari[malzeme])
+        ikon.pos = (70, y)
+        ikon.draw()
+
+    for i, malzeme in enumerate(secili_malzemeler):
+        y = 130 + malzemeler.index(malzeme) * 50
+        screen.draw.text(f"- {malzeme}", (150, y), fontsize=30, color="green")
+
+    screen.draw.text(f"Skor: {skor}", topright=(WIDTH - 20, 20), fontsize=30, color="white")
+    screen.draw.text(f"Can: {can}", topright=(WIDTH - 20, 60), fontsize=30, color="white")
+
+    screen.draw.text(mesaj, center=(WIDTH // 2, 500), fontsize=35, color="lightblue")
+
+    kalan_sure = max(0, int(11 - (time.time() - son_buyu_zamani)))
+    screen.draw.text(f"Kalan Sure: {kalan_sure} sn", center=(WIDTH // 2, HEIGHT - 30), fontsize=30, color="yellow")
+
+def update():
+    global can, mevcut_iksir, secili_malzemeler, mesaj, skor, son_buyu_zamani, oyun_basladi
+
+    if not oyun_basladi or can <= 0:
+        return
+
+    if time.time() - son_buyu_zamani > 11:
+        mesaj = "Cok yavas oldun! Buyu gitti!"
+        can -= 1
+        secili_malzemeler = []
+        mevcut_iksir = random.choice(list(iksirler.keys()))
+        son_buyu_zamani = time.time()
+
+    if can <= 0:
+        oyun_basladi = False
+
+def on_mouse_down(pos):
+    if not oyun_basladi:
+        return
+
+    global secili_malzemeler
+    for i, malzeme in enumerate(malzemeler):
+        y = 130 + i * 50
+        if 70 <= pos[0] <= 400 and y <= pos[1] <= y + 40:
+            if malzeme in secili_malzemeler:
+                secili_malzemeler.remove(malzeme)
+            else:
+                secili_malzemeler.append(malzeme)
+
+def on_key_down(key):
+    global mesaj, secili_malzemeler, skor, can, mevcut_iksir, son_buyu_zamani, oyun_basladi
+
+    if key.name == "SPACE":
+        if not oyun_basladi:
+            skor = 0
+            can = 3
+            mevcut_iksir = random.choice(list(iksirler.keys()))
+            secili_malzemeler = []
+            mesaj = ""
+            son_buyu_zamani = time.time()
+            oyun_basladi = True
+            return
+
+    if not oyun_basladi:
+        return
+
+    if key.name == "RETURN":
+        if can <= 0:
+            return
+
+        dogru = set(iksirler[mevcut_iksir])
+        secilen = set(secili_malzemeler)
+
+        if dogru == secilen:
+            mesaj = "Iksir basariyla yapildi!"
+            dogru_ses.play()
+            skor += 1
+        else:
+            mesaj = "Iksir patladi! Yanlis malzeme!"
+            yanlis_ses.play()
+            can -= 1
+
+        secili_malzemeler = []
+        mevcut_iksir = random.choice(list(iksirler.keys()))
+        son_buyu_zamani = time.time()
+        karistir_ses.play()
